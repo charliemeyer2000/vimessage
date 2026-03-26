@@ -95,6 +95,12 @@ end
 
 -- ── UI Element Accessors ────────────────────────────────────────────
 
+local function isSearchActive()
+    local win = axWindow()
+    if not win then return false end
+    return findByAttr(win, "AXDescription", "Search results") ~= nil
+end
+
 local function conversationList()
     local win = axWindow()
     if not win then return nil end
@@ -182,12 +188,31 @@ function actions.focus_input()
     end)
 end
 
+local function sendKeyToApp(key)
+    local code = keycodes.map[key]
+    if not code then return end
+    local down = eventtap.event.newKeyEvent({}, code, true)
+    local up   = eventtap.event.newKeyEvent({}, code, false)
+    down:setFlags({})
+    up:setFlags({})
+    down:post()
+    up:post()
+end
+
 function actions.conv_down()
-    eventtap.keyStroke({"cmd", "shift"}, "]", 0)
+    if isSearchActive() then
+        sendKeyToApp("down")
+    else
+        eventtap.keyStroke({"cmd", "shift"}, "]", 0)
+    end
 end
 
 function actions.conv_up()
-    eventtap.keyStroke({"cmd", "shift"}, "[", 0)
+    if isSearchActive() then
+        sendKeyToApp("up")
+    else
+        eventtap.keyStroke({"cmd", "shift"}, "[", 0)
+    end
 end
 
 function actions.tapback()

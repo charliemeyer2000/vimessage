@@ -12,7 +12,7 @@ Default modifier: `ctrl`
 
 | Key | Action |
 |-----|--------|
-| `j` / `k` | Next / previous conversation |
+| `j` / `k` | Next / previous conversation (arrow-navigates search results when search is open) |
 | `f` | Focus search field |
 | `i` | Focus compose box |
 | `u` / `d` | Scroll messages up / down (hold to accelerate) |
@@ -85,6 +85,10 @@ require("messages_vim").setup({
 ```
 
 `u`/`d` use a velocity-based scroll engine at 60fps. Holding the key accelerates up to `max_speed`, releasing applies `friction` per frame until stopped. Increase `accel` and `max_speed` for faster scrolling, lower `friction` for quicker deceleration.
+
+## Not Controlled
+
+There are various features we don't control since they're already well(ish) designed 
 
 ## Contributing
 
