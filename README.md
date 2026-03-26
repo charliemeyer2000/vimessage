@@ -2,7 +2,7 @@
 
 Vim-style hotkeys for macOS Messages.app via [Hammerspoon](https://www.hammerspoon.org/).
 
-> **Unstable.** Tested on macOS Sequoia 15.7.4 only. Messages is a Catalyst app with undocumented AX internals that may change between versions. PRs welcome if something breaks on yours.
+> **Unstable.** Tested on macOS Sequoia 15.7.4 only. Messages has entirely undocumented internals, so this was hacked together. Feel free to ship a PR for another version. 
 
 https://github.com/user-attachments/assets/c2a91963-d8f3-4250-a4ae-f655e5108828
 
@@ -92,5 +92,4 @@ Test on your macOS version and open a PR if something breaks. The AX element IDs
 
 ## Requirements
 
-- macOS Sequoia (15.7.4 tested)
-- Hammerspoon with Accessibility permissions
+- Hammerspoon with Accessibility permissions enabled (Kind of annoying to enable, so just make sure it's actually enabled. Start and restart hammerspoon too just in case)
