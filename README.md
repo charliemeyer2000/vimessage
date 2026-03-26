@@ -4,6 +4,8 @@ Vim-style hotkeys for macOS Messages.app via [Hammerspoon](https://www.hammerspo
 
 > **Unstable.** Tested on macOS Sequoia 15.7.4 only. Messages is a Catalyst app with undocumented AX internals that may change between versions. PRs welcome if something breaks on yours.
 
+https://github.com/user-attachments/assets/c2a91963-d8f3-4250-a4ae-f655e5108828
+
 ## Shortcuts
 
 Default modifier: `ctrl`
