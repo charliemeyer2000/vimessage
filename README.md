@@ -25,24 +25,44 @@ Default modifier: `ctrl`
 
 ## Install
 
-1. Install [Hammerspoon](https://www.hammerspoon.org/) and grant it Accessibility permissions in System Settings > Privacy & Security > Accessibility.
+Requires [Hammerspoon](https://www.hammerspoon.org/) with Accessibility permissions (System Settings > Privacy & Security > Accessibility).
 
-2. Clone into your Hammerspoon config:
+### Nix (home-manager)
+
+Add to your flake inputs:
+
+```nix
+vimessage.url = "github:charliemeyer2000/vimessage";
+```
+
+Import the module and enable:
+
+```nix
+# In your home-manager config
+programs.vimessage = {
+  enable = true;
+  mod = "ctrl";
+  keys = {
+    tapback = false;            # disable a key
+    info = { mod = "alt"; key = "i"; };  # per-key modifier
+  };
+};
+```
+
+### Manual
 
 ```
-git clone https://github.com/YOUR_USERNAME/vimessage.git ~/.hammerspoon
+git clone https://github.com/charliemeyer2000/vimessage.git ~/.hammerspoon
 ```
 
-Or if you already have a Hammerspoon config, clone it somewhere and add to your `init.lua`:
+Or add to an existing Hammerspoon config:
 
 ```lua
 package.path = package.path .. ";/path/to/vimessage/?.lua"
 require("messages_vim").setup({})
 ```
 
-3. Reload Hammerspoon.
-
-## Configuration
+## Configuration (Lua)
 
 ```lua
 require("messages_vim").setup({
