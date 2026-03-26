@@ -42,6 +42,7 @@ local cfg = {
         edit           = "e",       -- edit last sent message
 
         -- Conversation management
+        new_message    = "n",       -- compose new message
         info           = "g",       -- show conversation details
         mark_read      = "m",       -- toggle read/unread
         delete_conv    = "x",       -- delete conversation
@@ -49,6 +50,12 @@ local cfg = {
         -- Window
         close          = "w",       -- close panel or hide app
         open_in_panel  = "space",   -- open conversation in separate window
+    },
+    scroll = {
+        max_speed = 80,             -- max px/frame at 60fps
+        accel     = 5,              -- px/frame² acceleration while held
+        friction  = 0.88,           -- velocity multiplier per frame when decelerating (0-1)
+        initial   = 4,              -- starting velocity on first press (px/frame)
     },
 }
 
@@ -148,7 +155,31 @@ function actions.focus_search()
 end
 
 function actions.focus_input()
-    if not clickElement(messageInput()) then log.w("message input not found") end
+    -- Wait for modifiers to release, pause eventtap, dismiss search panel, focus input
+    local checker
+    checker = timer.doEvery(0.02, function()
+        local mods = eventtap.checkKeyboardModifiers()
+        if not mods.ctrl and not mods.cmd and not mods.alt then
+            checker:stop()
+            checker = nil
+            -- Pause our key handler so synthetic Escape isn't intercepted
+            if keyTap then keyTap:stop() end
+            timer.doAfter(0.1, function()
+                -- Escape dismisses search panel when search field is focused
+                eventtap.keyStroke({}, "escape", 0)
+                timer.doAfter(0.15, function()
+                    if not clickElement(messageInput()) then
+                        log.w("message input not found")
+                    end
+                    if keyTap then keyTap:start() end
+                end)
+            end)
+        end
+    end)
+    timer.doAfter(1, function()
+        if checker then checker:stop(); checker = nil end
+        if keyTap and not keyTap:isEnabled() then keyTap:start() end
+    end)
 end
 
 function actions.conv_down()
@@ -172,15 +203,26 @@ function actions.edit()
 end
 
 function actions.info()
-    eventtap.keyStroke({"cmd", "alt"}, "i", 0)
+    eventtap.keyStroke({"cmd"}, "i", 0)
+end
+
+function actions.new_message()
+    eventtap.keyStroke({"cmd"}, "n", 0)
 end
 
 function actions.mark_read()
-    eventtap.keyStroke({"cmd", "shift"}, "u", 0)
+    eventtap.keyStroke({"cmd"}, "u", 0)
 end
 
 function actions.delete_conv()
-    eventtap.keyStroke({"cmd"}, "delete", 0)
+    local app = messagesApp()
+    if not app then return end
+    local menuItem = app:findMenuItem({"Conversation", "Delete Conversation…"})
+    if menuItem and menuItem.enabled then
+        app:selectMenuItem({"Conversation", "Delete Conversation…"})
+    else
+        log.w("delete_conv: menu item not available")
+    end
 end
 
 -- ── Smooth Scroll Engine ────────────────────────────────────────────
@@ -188,32 +230,37 @@ end
 
 local scroll = {
     velocity  = 0,
-    maxSpeed  = 32,
-    accel     = 3.5,
-    friction  = 0.88,
     direction = 0,
     holding   = false,
+    activeKey = nil,
     ticker    = nil,
     scrollPt  = nil,
     origMouse = nil,
 }
 
+local function scrollFullStop()
+    scroll.velocity = 0
+    scroll.direction = 0
+    scroll.holding = false
+    scroll.activeKey = nil
+    if scroll.ticker then scroll.ticker:stop(); scroll.ticker = nil end
+    if scroll.origMouse then
+        hs.mouse.absolutePosition(scroll.origMouse)
+        scroll.origMouse = nil
+    end
+end
+
 local function scrollTick()
+    local s = cfg.scroll
     if scroll.holding then
-        scroll.velocity = scroll.velocity + scroll.accel
-        if scroll.velocity > scroll.maxSpeed then
-            scroll.velocity = scroll.maxSpeed
+        scroll.velocity = scroll.velocity + s.accel
+        if scroll.velocity > s.max_speed then
+            scroll.velocity = s.max_speed
         end
     else
-        scroll.velocity = scroll.velocity * scroll.friction
+        scroll.velocity = scroll.velocity * s.friction
         if scroll.velocity < 0.5 then
-            scroll.velocity = 0
-            scroll.direction = 0
-            if scroll.ticker then scroll.ticker:stop(); scroll.ticker = nil end
-            if scroll.origMouse then
-                hs.mouse.absolutePosition(scroll.origMouse)
-                scroll.origMouse = nil
-            end
+            scrollFullStop()
             return
         end
     end
@@ -223,37 +270,43 @@ local function scrollTick()
     end
 end
 
-local function scrollStart(direction)
+local function scrollStart(direction, keycode)
     scroll.holding = true
-    if scroll.direction == direction and scroll.ticker then return end
-    scroll.direction = direction
-    scroll.velocity = 4
+    scroll.activeKey = keycode
 
+    -- Same direction, already running — just keep accelerating
+    if scroll.direction == direction and scroll.ticker then return end
+
+    -- Direction change or fresh start — reset velocity
+    scroll.direction = direction
+    scroll.velocity = cfg.scroll.initial
+
+    -- Always refresh scroll target position (layout may have changed)
     local area = scrollTarget()
     if not area then return end
     local pos  = area:attributeValue("AXPosition")
     local size = area:attributeValue("AXSize")
     if not pos or not size then return end
-
     scroll.scrollPt = { x = pos.x + size.w / 2, y = pos.y + size.h / 2 }
-    scroll.origMouse = hs.mouse.absolutePosition()
-    hs.mouse.absolutePosition(scroll.scrollPt)
 
     if not scroll.ticker then
+        scroll.origMouse = hs.mouse.absolutePosition()
+        hs.mouse.absolutePosition(scroll.scrollPt)
         scroll.ticker = timer.doEvery(1 / 60, scrollTick)
     end
 end
 
 local function scrollStop()
     scroll.holding = false
+    scroll.activeKey = nil
 end
 
-function actions.scroll_up()
-    scrollStart(1)
+function actions.scroll_up(keycode)
+    scrollStart(1, keycode)
 end
 
-function actions.scroll_down()
-    scrollStart(-1)
+function actions.scroll_down(keycode)
+    scrollStart(-1, keycode)
 end
 
 -- ── Window Actions ──────────────────────────────────────────────────
@@ -355,22 +408,29 @@ end
 
 local function keyHandler(evt)
     if not isFrontmost() then
-        if scroll.holding then scrollStop() end
+        if scroll.ticker then scrollFullStop() end
         return false
     end
 
     local evtType = evt:getType()
+    local code    = evt:getKeyCode()
 
-    -- Stop scrolling on keyUp or modifier change
-    if evtType == eventtap.event.types.keyUp
-       or evtType == eventtap.event.types.flagsChanged then
+    -- On modifier release: stop scroll (ctrl was released)
+    if evtType == eventtap.event.types.flagsChanged then
         if scroll.holding then scrollStop() end
         return false
     end
 
-    local flags = evt:getFlags()
-    local code  = evt:getKeyCode()
+    -- On keyUp: only stop if it's the key that's driving the current scroll
+    if evtType == eventtap.event.types.keyUp then
+        if scroll.activeKey == code then scrollStop() end
+        return false
+    end
 
+    -- keyDown
+    local flags = evt:getFlags()
+
+    -- Non-scroll key pressed while scrolling → stop
     if scroll.holding and not scrollKeycodes[code] then
         scrollStop()
     end
@@ -380,7 +440,7 @@ local function keyHandler(evt)
             log.i("action: " .. b.action)
             local fn = actions[b.action]
             if fn then
-                local ok, err = pcall(fn)
+                local ok, err = pcall(fn, code)
                 if not ok then log.e(b.action .. " error: " .. tostring(err)) end
                 return true
             end
@@ -392,13 +452,31 @@ end
 
 -- ── Lifecycle ───────────────────────────────────────────────────────
 
+local validMods = { ctrl = true, cmd = true, alt = true, shift = true }
+
 function M.setup(opts)
     opts = opts or {}
 
-    if opts.mod then cfg.mod = opts.mod end
+    if opts.mod then
+        if not validMods[opts.mod] then
+            log.w("invalid mod: " .. tostring(opts.mod) .. " (expected ctrl/cmd/alt/shift)")
+        end
+        cfg.mod = opts.mod
+    end
     if opts.keys then
         for k, v in pairs(opts.keys) do
+            if not actions[k] then
+                log.w("unknown action: " .. tostring(k))
+            end
             cfg.keys[k] = v
+        end
+    end
+    if opts.scroll then
+        for k, v in pairs(opts.scroll) do
+            if type(v) ~= "number" then
+                log.w("scroll." .. k .. " must be a number, got " .. type(v))
+            end
+            cfg.scroll[k] = v
         end
     end
 

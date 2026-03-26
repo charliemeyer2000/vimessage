@@ -20,12 +20,15 @@ require("messages_vim").setup({
     --     edit           = "e",       -- edit last sent           (Cmd+E)
     --
     --     -- Conversation management
-    --     info           = "g",       -- conversation details     (Opt+Cmd+I)
-    --     mark_read      = "m",       -- toggle read/unread       (Shift+Cmd+U)
-    --     delete_conv    = "x",       -- delete conversation      (Cmd+Delete)
+    --     new_message    = "n",       -- compose new message      (Cmd+N)
+    --     info           = "g",       -- conversation details     (Cmd+I)
+    --     mark_read      = "m",       -- toggle read/unread       (Cmd+U)
+    --     delete_conv    = "x",       -- delete conversation      (menu click)
     --
     --     -- Window
     --     close          = "w",       -- close panel / hide app
     --     open_in_panel  = "space",   -- open in separate window  (double-click)
     -- },
 })
+
+hs.pathwatcher.new(os.getenv("HOME") .. "/.hammerspoon/", hs.reload):start()

@@ -1,6 +1,6 @@
 # vimessage
 
-Vim-style hotkeys for macOS Messages.app via [Hammerspoon](https://www.hammerspoon.org/). No UI, no modes — just modifier+key when Messages is focused.
+Vim-style hotkeys for macOS Messages.app via [Hammerspoon](https://www.hammerspoon.org/).
 
 > **Unstable.** Tested on macOS Sequoia 15.7.4 only. Messages is a Catalyst app with undocumented AX internals that may change between versions. PRs welcome if something breaks on yours.
 
@@ -17,6 +17,7 @@ Default modifier: `ctrl`
 | `t` | Tapback (then 1-6 to react) |
 | `r` | Reply to last received |
 | `e` | Edit last sent |
+| `n` | New message |
 | `g` | Conversation details |
 | `m` | Toggle read/unread |
 | `x` | Delete conversation |
@@ -25,7 +26,7 @@ Default modifier: `ctrl`
 
 ## Install
 
-Requires [Hammerspoon](https://www.hammerspoon.org/) with Accessibility permissions (System Settings > Privacy & Security > Accessibility).
+Requires [Hammerspoon](https://www.hammerspoon.org/) with Accessibility permissions (System Settings > Privacy & Security > Accessibility). Do that. You can do that programatically via nix if you have SIP disabled; otherwise, just gotta do it yourself. 
 
 ### Nix (home-manager)
 
@@ -72,8 +73,16 @@ require("messages_vim").setup({
         tapback      = false,                 -- disable a key
         info = { mod = "alt", key = "i" },    -- per-key modifier
     },
+    scroll = {
+        max_speed = 80,                       -- max px/frame at 60fps
+        accel     = 5,                        -- px/frame² acceleration while held
+        friction  = 0.88,                     -- velocity multiplier per frame on release (0-1)
+        initial   = 4,                        -- starting velocity on first press
+    },
 })
 ```
+
+`u`/`d` use a velocity-based scroll engine at 60fps. Holding the key accelerates up to `max_speed`, releasing applies `friction` per frame until stopped. Increase `accel` and `max_speed` for faster scrolling, lower `friction` for quicker deceleration.
 
 ## Contributing
 

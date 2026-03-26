@@ -35,6 +35,7 @@ flake: {
     require("messages_vim").setup({
         mod = "${cfg.mod}",
     ${keysBlock}})
+    hs.pathwatcher.new(os.getenv("HOME") .. "/.hammerspoon/", hs.reload):start()
   '';
 in {
   options.programs.vimessage = {
